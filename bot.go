@@ -6,15 +6,14 @@ import (
   "os"
   "os/signal"
   "syscall"
-  "github.com/kkdai/luis"
   "fmt"
+  "github.com/acastle/apiai-go"
 )
 
 var GuildID = "256295245816397824"
-var cog *luis.Luis
+var AI *apiaigo.APIAI
 
 func main() {
-  var appId = os.Getenv("APP_ID")
   var apiKey = os.Getenv("API_KEY")
   var botToken = os.Getenv("BOT_TOKEN")
 
@@ -34,7 +33,13 @@ func main() {
   }
 
   bot.AddHandler(onMessageCreate)
-  cog = luis.NewLuis(apiKey, appId)
+
+  AI = &apiaigo.APIAI{
+    AuthToken: apiKey,
+    Language:  "en-US",
+    SessionID: "64f16405-5b58-4209-9fd1-c3e327267861",
+    Version:   "20150910",
+  }
 
   log.Printf(`Now running. Press CTRL-C to exit.`)
   sc := make(chan os.Signal, 1)
@@ -56,19 +61,15 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
   }
 
   if c.Name == "bottraining" {
-    res, err := cog.Predict(m.Content)
+    log.Printf("Query for '%v'", m.Content)
+    resp, err := AI.SendText(m.Content)
     if err != nil {
-      log.Println("err: " + err.Err.Error())
+      log.Println("err: " + err.Error())
     }
 
-    pr := luis.NewPredictResponse(res)
-    intent := luis.GetBestScoreIntent(pr)
-
-    if intent.Name != "None" {
-      s.ChannelMessageSend(m.ChannelID, "Intent: " + intent.Name)
-      for _,e := range (*pr)[0].EntitiesResults {
-        fmt.Println(e)
-      }
+    if resp.Result.Action != "input.unknown" {
+      out := fmt.Sprintf("action:%s\nparams:\n  %v", resp.Result.Action, resp.Result.Parameters)
+      s.ChannelMessageSend(m.ChannelID, out)
     }
   }
 }
