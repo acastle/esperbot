@@ -8,10 +8,13 @@ import (
   "syscall"
   "fmt"
   "github.com/acastle/apiai-go"
+  "github.com/go-redis/redis"
+  "strings"
 )
 
 var GuildID = "256295245816397824"
 var AI *apiaigo.APIAI
+var Redis *redis.Client
 
 func main() {
   var apiKey = os.Getenv("API_KEY")
@@ -41,6 +44,11 @@ func main() {
     Version:   "20150910",
   }
 
+  Redis = redis.NewClient(&redis.Options{
+    Addr:     "redis:6379",
+    DB:       0,
+  })
+
   log.Printf(`Now running. Press CTRL-C to exit.`)
   sc := make(chan os.Signal, 1)
   signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
@@ -67,9 +75,37 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
       log.Println("err: " + err.Error())
     }
 
-    if resp.Result.Action != "input.unknown" {
-      out := fmt.Sprintf("action:%s\nparams:\n  %v", resp.Result.Action, resp.Result.Parameters)
-      s.ChannelMessageSend(m.ChannelID, out)
+    if resp.Result.Action == "attendance.missraid" {
+      results, err := MissRaid(m.Author, resp)
+      if err != nil {
+        log.Println(err.Error())
+        s.ChannelMessageSend(m.ChannelID, err.Error())
+      } else {
+        for _,r := range results {
+          s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Marked %v out on %v", r.Name, r.Dates))
+        }
+      }
+    }
+
+    if resp.Result.Action == "attendance.query" {
+      results, err := Query(resp)
+      if err != nil {
+        log.Println(err.Error())
+        s.ChannelMessageSend(m.ChannelID, err.Error())
+      } else {
+
+        for _,r := range results {
+          year,month,day := r.Date.Date()
+          members := strings.Join(r.Members, "\n  ")
+          msg := fmt.Sprintf("**Raiders out for %d/%d/%d**\n  %s", month, day, year, members)
+          s.ChannelMessageSend(m.ChannelID, msg)
+        }
+      }
+
+    }
+
+    if resp.Result.Action == "input.runsim" {
+
     }
   }
 }

@@ -1,0 +1,8 @@
+version: '3.0'
+services:
+  bot:
+    depends_on:
+      - redis
+    build: .
+  redis:
+    image: "redis:alpine"
