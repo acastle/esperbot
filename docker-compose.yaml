@@ -1,8 +1,10 @@
 version: '3.0'
 services:
   bot:
+    env_file:
+    - bot.env
     depends_on:
-      - redis
+    - redis
     build: .
   redis:
     image: "redis:alpine"
