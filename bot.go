@@ -10,14 +10,16 @@ import (
   "github.com/acastle/apiai-go"
   "github.com/go-redis/redis"
   "strings"
+  "io"
+  "crypto/rand"
 )
 
 var GuildID = "256295245816397824"
-var AI *apiaigo.APIAI
+var apiKey string;
 var Redis *redis.Client
 
 func main() {
-  var apiKey = os.Getenv("API_KEY")
+  apiKey = os.Getenv("API_KEY")
   var botToken = os.Getenv("BOT_TOKEN")
 
   bot, err := discordgo.New("Bot " + botToken)
@@ -36,13 +38,6 @@ func main() {
   }
 
   bot.AddHandler(onMessageCreate)
-
-  AI = &apiaigo.APIAI{
-    AuthToken: apiKey,
-    Language:  "en-US",
-    SessionID: "64f16405-5b58-4209-9fd1-c3e327267861",
-    Version:   "20150910",
-  }
 
   Redis = redis.NewClient(&redis.Options{
     Addr:     "redis:6379",
@@ -68,9 +63,21 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
     return
   }
 
+  uuid, err := newUUID()
+  if err != nil {
+    return
+  }
+
+  ai := &apiaigo.APIAI{
+    AuthToken: apiKey,
+    Language:  "en-US",
+    SessionID: uuid,
+    Version:   "20150910",
+  }
+
   if c.Name == "bottraining" {
     log.Printf("Query for '%v'", m.Content)
-    resp, err := AI.SendText(m.Content)
+    resp, err := ai.SendText(m.Content)
     if err != nil {
       log.Println("err: " + err.Error())
     }
@@ -79,7 +86,7 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
       results, err := MissRaid(m.Author, resp)
       if err != nil {
         log.Println(err.Error())
-        s.ChannelMessageSend(m.ChannelID, err.Error())
+        //s.ChannelMessageSend(m.ChannelID, err.Error())
       } else {
         for _,r := range results {
           s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Marked %v out on %v", r.Name, r.Dates))
@@ -108,4 +115,17 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
     }
   }
+}
+
+func newUUID() (string, error) {
+  uuid := make([]byte, 16)
+  n, err := io.ReadFull(rand.Reader, uuid)
+  if n != len(uuid) || err != nil {
+    return "", err
+  }
+  // variant bits; see section 4.1.1
+  uuid[8] = uuid[8]&^0xc0 | 0x80
+  // version 4 (pseudo-random); see section 4.1.3
+  uuid[6] = uuid[6]&^0xf0 | 0x40
+  return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }
