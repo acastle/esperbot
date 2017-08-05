@@ -15,7 +15,7 @@ var (
 )
 
 func IsValidRaidDay(weekday time.Weekday) bool {
-  return weekday != 2 || weekday != 3
+  return weekday == 2 || weekday == 3
 }
 
 func getSetKey(time time.Time) string {
