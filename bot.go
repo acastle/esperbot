@@ -89,7 +89,7 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
         //s.ChannelMessageSend(m.ChannelID, err.Error())
       } else {
         for _,r := range results {
-          s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Marked %v out on %v", r.Name, r.Dates))
+          s.ChannelMessageSend(m.ChannelID, r.String())
         }
       }
     }

@@ -108,3 +108,20 @@ func Query(resp apiaigo.ResponseStruct) ([]QueryResult, error){
 
   return results, nil
 }
+
+func (r MissRaidResult) String() string {
+  dates := []string{}
+  var dateString string
+  for _, d := range r.Dates {
+    dates = append(dates, d.Format("Jan 2"))
+  }
+
+  if (len(dates) > 1) {
+    commaString := strings.Join(dates[:len(dates)-1], ", ")
+    dateString = fmt.Sprintf("%s, and %s", commaString, dates[len(dates)-1])
+  } else {
+    dateString = dates[0]
+  }
+
+  return fmt.Sprintf("Marked **%v** out on %v", r.Name, dateString)
+}
