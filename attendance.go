@@ -25,7 +25,12 @@ func getSetKey(time time.Time) string {
 
 func getDates(resp apiaigo.ResponseStruct) ([]time.Time, error){
   dateStrings := resp.Result.Parameters["date"].Values
-  if dateStrings == nil {
+  period := resp.Result.Parameters["period"].Value
+  if len(dateStrings) == 0 && period != "" {
+    dateStrings = strings.Split(period, "/")
+  }
+
+  if len(dateStrings) == 0 {
     return []time.Time{}, ErrNoDatesSpecified
   }
 

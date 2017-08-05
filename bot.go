@@ -100,7 +100,6 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
         log.Println(err.Error())
         s.ChannelMessageSend(m.ChannelID, err.Error())
       } else {
-
         for _,r := range results {
           year,month,day := r.Date.Date()
           members := strings.Join(r.Members, "\n  ")
