@@ -135,14 +135,19 @@ func MissRaid(user *discordgo.User, resp apiaigo.ResponseStruct, cancel bool) ([
       var result *redis.IntCmd
       if cancel {
         result = Redis.SRem(key, val)
-        results = append(results, &cancelMissResult{val, dates})
       } else {
         result = Redis.SAdd(key, val)
-        results = append(results, &missRaidResult{val, dates})
       }
+      
       if result.Err() != nil {
         return []Result{},result.Err()
       }
+    }
+
+    if cancel {
+      results = append(results, &cancelMissResult{val, dates})
+    } else {
+      results = append(results, &missRaidResult{val, dates})
     }
   }
 
