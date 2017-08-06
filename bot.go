@@ -9,7 +9,6 @@ import (
   "fmt"
   "github.com/acastle/apiai-go"
   "github.com/go-redis/redis"
-  "strings"
   "io"
   "crypto/rand"
 )
@@ -75,39 +74,29 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
     Version:   "20150910",
   }
 
-  if c.Name == "bottraining" {
+  if c.Name == "attendance" {
     log.Printf("Query for '%v'", m.Content)
     resp, err := ai.SendText(m.Content)
     if err != nil {
       log.Println("err: " + err.Error())
     }
 
+    var results []Result
     if resp.Result.Action == "attendance.missraid" {
-      results, err := MissRaid(m.Author, resp)
-      if err != nil {
-        log.Println(err.Error())
-        //s.ChannelMessageSend(m.ChannelID, err.Error())
-      } else {
-        for _,r := range results {
-          s.ChannelMessageSend(m.ChannelID, r.String())
-        }
-      }
+      results, err = MissRaid(m.Author, resp, false)
+    } else if resp.Result.Action == "attendance.cancelmiss" {
+      results, err = MissRaid(m.Author, resp, true)
+    } else if resp.Result.Action == "attendance.query" {
+      results, err = Query(resp)
     }
 
-    if resp.Result.Action == "attendance.query" {
-      results, err := Query(resp)
-      if err != nil {
-        log.Println(err.Error())
-        s.ChannelMessageSend(m.ChannelID, err.Error())
-      } else {
-        for _,r := range results {
-          year,month,day := r.Date.Date()
-          members := strings.Join(r.Members, "\n  ")
-          msg := fmt.Sprintf("**Raiders out for %d/%d/%d**\n  %s", month, day, year, members)
-          s.ChannelMessageSend(m.ChannelID, msg)
-        }
+    if err != nil {
+      log.Println(err.Error())
+      //s.ChannelMessageSend(m.ChannelID, err.Error())
+    } else {
+      for _,r := range results {
+        s.ChannelMessageSend(m.ChannelID, r.String())
       }
-
     }
 
     if resp.Result.Action == "input.runsim" {

@@ -6,5 +6,7 @@ services:
     depends_on:
     - redis
     build: .
+    restart: on-failure:5
   redis:
+    restart: on-failure:5
     image: "redis:alpine"
