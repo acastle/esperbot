@@ -106,6 +106,11 @@ type missRaidResult struct {
   Dates []time.Time
 }
 
+type cancelMissResult struct {
+  Name string
+  Dates []time.Time
+}
+
 func MissRaid(user *discordgo.User, resp apiaigo.ResponseStruct, cancel bool) ([]Result, error) {
   members := resp.Result.Parameters["member"].Values
   if len(members) == 0 {
@@ -130,15 +135,15 @@ func MissRaid(user *discordgo.User, resp apiaigo.ResponseStruct, cancel bool) ([
       var result *redis.IntCmd
       if cancel {
         result = Redis.SRem(key, val)
+        results = append(results, &cancelMissResult{val, dates})
       } else {
         result = Redis.SAdd(key, val)
+        results = append(results, &missRaidResult{val, dates})
       }
       if result.Err() != nil {
         return []Result{},result.Err()
       }
     }
-
-    results = append(results, &missRaidResult{val, dates})
   }
 
   return results, nil
@@ -170,20 +175,25 @@ func Query(resp apiaigo.ResponseStruct) ([]Result, error){
 }
 
 func (r *missRaidResult) String() string {
-  dates := []string{}
-  var dateString string
-  for _, d := range r.Dates {
-    dates = append(dates, d.Format("Jan 2"))
+  return fmt.Sprintf("Marked **%v** out on %v", r.Name, formatDates(r.Dates))
+}
+
+func (r *cancelMissResult) String() string {
+  return fmt.Sprintf("Marked **%v** in on %v", r.Name, formatDates(r.Dates))
+}
+
+func formatDates(dates []time.Time) string {
+  formatted := []string{}
+  for _, d := range dates {
+    formatted = append(formatted, d.Format("Jan 2"))
   }
 
   if (len(dates) > 1) {
-    commaString := strings.Join(dates[:len(dates)-1], ", ")
-    dateString = fmt.Sprintf("%s and %s", commaString, dates[len(dates)-1])
+    commaString := strings.Join(formatted[:len(formatted)-1], ", ")
+    return fmt.Sprintf("%s and %s", commaString, formatted[len(formatted)-1])
   } else {
-    dateString = dates[0]
+    return formatted[0]
   }
-
-  return fmt.Sprintf("Marked **%v** out on %v", r.Name, dateString)
 }
 
 func (r *queryResult) String() string {
