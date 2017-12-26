@@ -1,218 +1,166 @@
 package main
 
 import (
-  "time"
-  "errors"
-  "fmt"
-  "strings"
-  "github.com/acastle/apiai-go"
-  "github.com/bwmarrin/discordgo"
-  "github.com/go-redis/redis"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
 )
 
 var (
-  ErrInvalidRaidDay = errors.New("Not a valid raid day")
-  ErrNoDatesSpecified = errors.New("Need to specifiy dates")
-  ErrInvalidPeriod = errors.New("Invalid time period given")
-  ErrPeriodTooLarge = errors.New("Time period is larger than a month")
+	ErrInvalidRaidDay   = errors.New("Not a valid raid day")
+	ErrNoDatesSpecified = errors.New("Need to specifiy dates")
+	ErrInvalidPeriod    = errors.New("Invalid time period given")
+	ErrPeriodTooLarge   = errors.New("Time period is larger than a month")
 )
 
 func IsValidRaidDay(weekday time.Weekday) bool {
-  return weekday == 2 || weekday == 3
+	return weekday == 2 || weekday == 3
 }
 
 func getSetKey(time time.Time) string {
-  year,month,day := time.Date()
-  return fmt.Sprintf("attendance:%d:%d:%d", year, month, day)
-}
-
-func parseDates (dateStrings []string) ([]time.Time, error) {
-  var dates []time.Time
-  if len(dateStrings) > 0 {
-    for _,s := range dateStrings {
-      date, err := time.Parse("2006-01-02", s)
-      if err != nil {
-        return []time.Time{}, err
-      }
-
-      dates = append(dates, date)
-    }
-  }
-
-  return dates, nil
-}
-
-func parsePeriod (period string) ([]time.Time, error) {
-  var dates []time.Time
-  split := strings.Split(period, "/")
-  if len(split) != 2 {
-    return nil, ErrInvalidPeriod
-  }
-
-  start, err := time.Parse("2006-01-02", split[0])
-  if err != nil {
-    return nil, err
-  }
-
-  end, err := time.Parse("2006-01-02", split[1])
-  if err != nil {
-    return nil, err
-  }
-
-  if end.Sub(start).Hours() > (4 * 7 * 24) {
-    return nil, ErrPeriodTooLarge
-  }
-
-  current:=start
-  for current.Before(end) {
-    if IsValidRaidDay(current.Weekday()) {
-      dates = append(dates, current)
-    }
-    current=current.AddDate(0,0,1)
-  }
-
-  return dates, nil
-}
-
-func getDates(resp apiaigo.ResponseStruct) ([]time.Time, error){
-  dateStrings := resp.Result.Parameters["date"].Values
-  period := resp.Result.Parameters["period"].Value
-
-  var dates []time.Time
-  var err error
-  if len(dateStrings) > 0 {
-    dates, err = parseDates(dateStrings)
-  } else if (period != "") {
-    dates, err = parsePeriod(period)
-  }
-
-  if err != nil {
-    return nil, err
-  }
-
-  if len(dates) > 0 {
-    return dates, nil
-  }
-
-  return nil, ErrNoDatesSpecified
-}
-
-type listParam struct {
-  data []interface{}
+	year, month, day := time.Date()
+	return fmt.Sprintf("attendance:%d:%d:%d", year, month, day)
 }
 
 type missRaidResult struct {
-  Name string
-  Dates []time.Time
+	Users []User
+	Dates []time.Time
 }
 
 type cancelMissResult struct {
-  Name string
-  Dates []time.Time
+	Users []User
+	Dates []time.Time
 }
 
-func MissRaid(user *discordgo.User, resp apiaigo.ResponseStruct, cancel bool) ([]Result, error) {
-  members := resp.Result.Parameters["member"].Values
-  if len(members) == 0 {
-    members = []string{user.Username}
-  }
+func Out(users []User, dates []time.Time) (Result, error) {
+	result := &missRaidResult{
+		users,
+		dates,
+	}
+	err := runForAll(users, dates, out)
+	return result, err
+}
 
-  dates, err := getDates(resp)
-  if err != nil {
-    return []Result{}, err
-  }
+func In(users []User, dates []time.Time) (Result, error) {
+	result := &cancelMissResult{
+		users,
+		dates,
+	}
+	err := runForAll(users, dates, in)
+	return result, err
+}
 
-  results := []Result{}
-  for _,n := range members {
-    val := strings.Title(n)
+func runForAll(users []User, dates []time.Time, action func(user User, date time.Time) error) error {
+	for _, user := range users {
+		for _, date := range dates {
+			err := action(user, date)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
-    for _,d := range dates {
-      if !IsValidRaidDay(d.Weekday()) {
-        continue
-      }
+	return nil
+}
 
-      key := getSetKey(d)
-      var result *redis.IntCmd
-      if cancel {
-        result = Redis.SRem(key, val)
-      } else {
-        result = Redis.SAdd(key, val)
-      }
-      
-      if result.Err() != nil {
-        return []Result{},result.Err()
-      }
-    }
+func out(user User, date time.Time) error {
+	if !IsValidRaidDay(date.Weekday()) {
+		return ErrInvalidRaidDay
+	}
 
-    if cancel {
-      results = append(results, &cancelMissResult{val, dates})
-    } else {
-      results = append(results, &missRaidResult{val, dates})
-    }
-  }
+	key := getSetKey(date)
+	result := Redis.SAdd(key, string(user))
+	if result.Err() != nil {
+		return result.Err()
+	}
 
-  return results, nil
+	return nil
+}
+
+func in(user User, date time.Time) error {
+	if !IsValidRaidDay(date.Weekday()) {
+		return ErrInvalidRaidDay
+	}
+
+	key := getSetKey(date)
+	result := Redis.SRem(key, string(user))
+	if result.Err() != nil {
+		return result.Err()
+	}
+
+	return nil
 }
 
 type queryResult struct {
-  Date time.Time
-  Members []string
+	Date    time.Time
+	Members []string
 }
 
-func Query(resp apiaigo.ResponseStruct) ([]Result, error){
-  results := []Result{}
-  dates, err := getDates(resp)
-  if err != nil {
-    return results, err
-  }
+func Query(dates []time.Time) ([]Result, error) {
+	results := []Result{}
 
-  for _,d := range dates {
-    if !IsValidRaidDay(d.Weekday()) {
-      return results, ErrInvalidRaidDay
-    }
+	for _, d := range dates {
+		if !IsValidRaidDay(d.Weekday()) {
+			return results, ErrInvalidRaidDay
+		}
 
-    key := getSetKey(d)
-    result := Redis.SMembers(key)
-    results = append(results, &queryResult{d, result.Val()})
-  }
+		key := getSetKey(d)
+		result := Redis.SMembers(key)
+		results = append(results, &queryResult{d, result.Val()})
+	}
 
-  return results, nil
+	return results, nil
 }
 
 func (r *missRaidResult) String() string {
-  return fmt.Sprintf("Marked **%v** out on %v", r.Name, formatDates(r.Dates))
+	return fmt.Sprintf("Marked %v out on %v", formatUsers(r.Users), formatDates(r.Dates))
 }
 
 func (r *cancelMissResult) String() string {
-  return fmt.Sprintf("Marked **%v** in on %v", r.Name, formatDates(r.Dates))
+	return fmt.Sprintf("Marked %v in on %v", formatUsers(r.Users), formatDates(r.Dates))
+}
+
+func formatUsers(users []User) string {
+	var names []string
+	for _, user := range users {
+		names = append(names, fmt.Sprintf("**%v**", user))
+	}
+
+	if len(users) > 1 {
+		commaString := strings.Join(names[:len(names)-1], ", ")
+		return fmt.Sprintf("%s and %s", commaString, names[len(names)-1])
+	} else {
+		return names[0]
+	}
 }
 
 func formatDates(dates []time.Time) string {
-  formatted := []string{}
-  for _, d := range dates {
-    formatted = append(formatted, d.Format("Jan 2"))
-  }
+	formatted := []string{}
+	for _, d := range dates {
+		formatted = append(formatted, d.Format("Jan 2"))
+	}
 
-  if (len(dates) > 1) {
-    commaString := strings.Join(formatted[:len(formatted)-1], ", ")
-    return fmt.Sprintf("%s and %s", commaString, formatted[len(formatted)-1])
-  } else {
-    return formatted[0]
-  }
+	if len(dates) > 1 {
+		commaString := strings.Join(formatted[:len(formatted)-1], ", ")
+		return fmt.Sprintf("%s and %s", commaString, formatted[len(formatted)-1])
+	} else {
+		return formatted[0]
+	}
 }
 
 func (r *queryResult) String() string {
-  year,month,day := r.Date.Date()
-  var membersList string
-  if len(r.Members) == 0 {
-    membersList = "No one is out :thumbsup:"
-  } else {
-    membersList = strings.Join(r.Members, "\n  ")
-  }
+	year, month, day := r.Date.Date()
+	var membersList string
+	if len(r.Members) == 0 {
+		membersList = "No one is out :thumbsup:"
+	} else {
+		membersList = strings.Join(r.Members, "\n  ")
+	}
 
-  return fmt.Sprintf("**Raiders out for %d/%d/%d**\n  %s", month, day, year, membersList)
+	return fmt.Sprintf("**Raiders out for %d/%d/%d**\n  %s", month, day, year, membersList)
 }
 
 type Result interface {
-  String() string
+	String() string
 }
