@@ -6,17 +6,7 @@ services:
     depends_on:
     - redis
     build: .
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+    restart: on-failure:5
   redis:
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+    restart: on-failure:5
     image: "redis:alpine"
