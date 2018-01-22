@@ -8,7 +8,11 @@ import (
 	"time"
 )
 
-var ErrNoHandlerConfigured = errors.New("No handler defined for this intent")
+var 
+(
+  ErrNoHandlerConfigured = errors.New("No handler defined for this intent")
+  ErrNoValidDatesSpecified = errors.New("No valid dates were specified in this request")
+)
 
 func DispatchActions(user User, resp models.QueryResponse) ([]Result, error) {
 	var err error
@@ -86,9 +90,11 @@ func ParseDateParam(resp models.QueryResponse) ([]time.Time, error) {
 
 			dates = append(dates, date)
 		}
+    
+    return dates, nil
 	}
 
-	return dates, nil
+	return nil, ErrNoValidDatesSpecified
 }
 
 func parseDate(val string) (time.Time, error) {
@@ -112,7 +118,11 @@ func ParsePeriodParam(resp models.QueryResponse) ([]time.Time, error) {
 		allDates = append(allDates, dates...)
 	}
 
-	return allDates, nil
+  if len(allDates) > 0 {
+    return allDates, nil
+  }
+  
+	return nil, ErrNoValidDatesSpecified
 }
 
 func parsePeriod(val string) ([]time.Time, error) {

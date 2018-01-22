@@ -1,4 +1,5 @@
 .idea/
 bot.env
+vendor/
 
 .DS_Store
