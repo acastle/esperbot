@@ -40,7 +40,7 @@ func DispatchActions(user User, resp models.QueryResponse) ([]Result, error) {
 		return nil, err
 	}
 
-	if parts[1] == "in" || parts[1] == "out" {
+	if parts[1] == "in" || parts[1] == "out" ||  parts[1] == "late" {
 		members, err := ParseMemberParam(user, resp)
 		if err != nil {
 			return nil, err
