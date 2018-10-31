@@ -48,6 +48,8 @@ func DispatchActions(user User, resp models.QueryResponse) ([]Result, error) {
 
 		if parts[1] == "in" {
 			result, err = In(members, dates)
+		} else if parts[1] == "late" {
+			result, err = Late(members, dates)
 		} else {
 			result, err = Out(members, dates)
 		}

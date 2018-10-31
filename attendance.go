@@ -18,9 +18,14 @@ func IsValidRaidDay(weekday time.Weekday) bool {
 	return weekday == 2 || weekday == 3
 }
 
-func getSetKey(time time.Time) string {
+func getOutKey(time time.Time) string {
 	year, month, day := time.Date()
 	return fmt.Sprintf("attendance:%d:%d:%d", year, month, day)
+}
+
+func getLateKey(time time.Time) string {
+	year, month, day := time.Date()
+	return fmt.Sprintf("attendance:late:%d:%d:%d", year, month, day)
 }
 
 type missRaidResult struct {
@@ -33,7 +38,12 @@ type cancelMissResult struct {
 	Dates []time.Time
 }
 
-func Out(users []User, dates []time.Time) (Result, error) {
+type lateResult struct {
+	Users []User
+	Dates []time.Time
+}
+
+func Out(users []User, dates []time.Time) (*missRaidResult, error) {
 	result := &missRaidResult{
 		users,
 		dates,
@@ -42,12 +52,21 @@ func Out(users []User, dates []time.Time) (Result, error) {
 	return result, err
 }
 
-func In(users []User, dates []time.Time) (Result, error) {
+func In(users []User, dates []time.Time) (*cancelMissResult, error) {
 	result := &cancelMissResult{
 		users,
 		dates,
 	}
 	err := runForAll(users, dates, in)
+	return result, err
+}
+
+func Late(users []User, dates []time.Time) (*lateResult, error) {
+	result := &lateResult{
+		users,
+		dates,
+	}
+	err := runForAll(users, dates, late)
 	return result, err
 }
 
@@ -69,7 +88,7 @@ func out(user User, date time.Time) error {
 		return ErrInvalidRaidDay
 	}
 
-	key := getSetKey(date)
+	key := getOutKey(date)
 	result := Redis.SAdd(key, string(user))
 	if result.Err() != nil {
 		return result.Err()
@@ -83,8 +102,22 @@ func in(user User, date time.Time) error {
 		return ErrInvalidRaidDay
 	}
 
-	key := getSetKey(date)
+	key := getOutKey(date)
 	result := Redis.SRem(key, string(user))
+	if result.Err() != nil {
+		return result.Err()
+	}
+
+	return nil
+}
+
+func late(user User, date time.Time) error {
+	if !IsValidRaidDay(date.Weekday()) {
+		return ErrInvalidRaidDay
+	}
+
+	key := getLateKey(date)
+	result := Redis.SAdd(key, string(user))
 	if result.Err() != nil {
 		return result.Err()
 	}
@@ -105,7 +138,7 @@ func Query(dates []time.Time) ([]Result, error) {
 			return results, ErrInvalidRaidDay
 		}
 
-		key := getSetKey(d)
+		key := getOutKey(d)
 		result := Redis.SMembers(key)
 		results = append(results, &queryResult{d, result.Val()})
 	}
@@ -119,6 +152,10 @@ func (r *missRaidResult) String() string {
 
 func (r *cancelMissResult) String() string {
 	return fmt.Sprintf("Marked %v in on %v", formatUsers(r.Users), formatDates(r.Dates))
+}
+
+func (r *lateResult) String() string {
+	return fmt.Sprintf("Marked %v late on %v", formatUsers(r.Users), formatDates(r.Dates))
 }
 
 func formatUsers(users []User) string {
