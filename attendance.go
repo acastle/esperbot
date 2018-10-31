@@ -127,7 +127,8 @@ func late(user User, date time.Time) error {
 
 type queryResult struct {
 	Date    time.Time
-	Members []string
+	OutMembers []string
+	LateMembers []string
 }
 
 func Query(dates []time.Time) ([]Result, error) {
@@ -138,9 +139,12 @@ func Query(dates []time.Time) ([]Result, error) {
 			return results, ErrInvalidRaidDay
 		}
 
-		key := getOutKey(d)
-		result := Redis.SMembers(key)
-		results = append(results, &queryResult{d, result.Val()})
+		outKey := getOutKey(d)
+		outResult := Redis.SMembers(outKey)
+
+		lateKey := getLateKey(d)
+		lateResult := Redis.SMembers(lateKey)
+		results = append(results, &queryResult{d, outResult.Val(), lateResult.Val()})
 	}
 
 	return results, nil
@@ -189,10 +193,10 @@ func formatDates(dates []time.Time) string {
 func (r *queryResult) String() string {
 	year, month, day := r.Date.Date()
 	var membersList string
-	if len(r.Members) == 0 {
+	if len(r.OutMembers) == 0 && len(r.LateMembers) == 0 {
 		membersList = "No one is out :thumbsup:"
 	} else {
-		membersList = strings.Join(r.Members, "\n  ")
+		membersList = strings.Join(r.OutMembers, "\n  ") + strings.Join(r.LateMembers, "(Late)\n  ")
 	}
 
 	return fmt.Sprintf("**Raiders out for %d/%d/%d**\n  %s", month, day, year, membersList)
