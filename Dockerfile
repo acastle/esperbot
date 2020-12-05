@@ -1,10 +1,10 @@
-FROM golang:1.11.1 as builder
-WORKDIR /go/src/github.com/acastle/esperbot
-RUN go get -u github.com/golang/dep/cmd/dep
+FROM golang:1.15.6 as builder
+
+COPY go.mod .
+RUN go get
 
 COPY . .
-RUN dep ensure \
-  && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
