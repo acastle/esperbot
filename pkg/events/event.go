@@ -216,8 +216,7 @@ func GetEmbedForEvent(session *discordgo.Session, redis *redis.Client, evt Event
 
 	embed := discordgo.MessageEmbed{
 		Author: &discordgo.MessageEmbedAuthor{
-			Name:    evt.Name,
-			IconURL: session.State.User.AvatarURL(""),
+			Name: evt.Name,
 		},
 		Title:       "Castle Nathria",
 		Description: evt.Time.Format("Monday Jan _2 2006"),
