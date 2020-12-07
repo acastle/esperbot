@@ -158,7 +158,7 @@ func AnnounceEvent(session *discordgo.Session, redis *redis.Client, evt Event) e
 		}).Info("create new announcement for event")
 		msg, err := session.ChannelMessageSendEmbed(evt.AnnounceChannelID, embed)
 		if err != nil {
-			log.Error(err)
+			return fmt.Errorf("create announcement message: %w", err)
 		}
 
 		evt.AnnounceMessageID = msg.ID
