@@ -45,6 +45,11 @@ func (b *Bot) Run() error {
 		log.Fatal(err)
 	}
 
+	b.session.State.User, err = b.session.User("@me")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	events.UpsertRecurringEvent(b.redis, events.RecurringEvent{
 		ID:       "MainRaid",
 		Name:     "Main Raid",
