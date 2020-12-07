@@ -12,10 +12,6 @@ import (
 	"github.com/go-redis/redis"
 )
 
-var GuildID = "256295245816397824"
-var AdminID = "93921947854835712"
-var Redis *redis.Client
-
 func main() {
 	log.SetFormatter(&log.TextFormatter{
 		DisableColors: true,
@@ -23,10 +19,11 @@ func main() {
 	})
 
 	var botToken = os.Getenv("BOT_TOKEN")
+	var redisAddr = os.Getenv("REDIS_ADDR")
 	session, err := discordgo.New("Bot " + botToken)
 
 	rd := redis.NewClient(&redis.Options{
-		Addr: "127.0.0.1:6379",
+		Addr: redisAddr,
 	})
 
 	instance, err := bot.NewBot(session, rd, gocron.NewScheduler(time.UTC))
