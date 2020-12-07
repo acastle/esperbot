@@ -1,8 +1,11 @@
 package main
 
 import (
-	"log"
 	"os"
+	"time"
+
+	"github.com/go-co-op/gocron"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/acastle/esperbot/pkg/bot"
 	"github.com/bwmarrin/discordgo"
@@ -14,10 +17,19 @@ var AdminID = "93921947854835712"
 var Redis *redis.Client
 
 func main() {
+	log.SetFormatter(&log.TextFormatter{
+		DisableColors: true,
+		FullTimestamp: true,
+	})
+
 	var botToken = os.Getenv("BOT_TOKEN")
 	session, err := discordgo.New("Bot " + botToken)
 
-	instance, err := bot.NewBot(session)
+	rd := redis.NewClient(&redis.Options{
+		Addr: "127.0.0.1:6379",
+	})
+
+	instance, err := bot.NewBot(session, rd, gocron.NewScheduler(time.UTC))
 	if err != nil {
 		log.Fatal(err)
 	}

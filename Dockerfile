@@ -1,13 +1,14 @@
 FROM golang:1.15.6 as builder
-
+WORKDIR /app
 COPY go.mod .
-RUN go get
+COPY go.sum .
+RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o esperbot .
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /go/src/github.com/acastle/esperbot/app .
-CMD ["./app"]
+WORKDIR /app
+COPY --from=builder /app/esperbot .
+CMD ["/app/esperbot"]
