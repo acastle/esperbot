@@ -64,6 +64,28 @@ func GetAttendanceForEvent(redis *redis.Client, evt Event) (Attendance, error) {
 	}, nil
 }
 
+func UserListAddForRange(redis *redis.Client, r util.DateRange, id string, t UserListType) error {
+	return util.ForEachDay(r, func(d time.Time) error {
+		err := UserListAdd(redis, d, id, t)
+		if err != nil {
+			return fmt.Errorf("add to user list: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func UserListRemoveForRange(redis *redis.Client, r util.DateRange, id string, t UserListType) error {
+	return util.ForEachDay(r, func(d time.Time) error {
+		err := UserListRemove(redis, d, id, t)
+		if err != nil {
+			return fmt.Errorf("remove from user list: %w", err)
+		}
+
+		return nil
+	})
+}
+
 func UserListAdd(redis *redis.Client, date time.Time, id string, t UserListType) error {
 	key := UserListKeyForDate(date, t)
 	result := redis.SAdd(key, id)

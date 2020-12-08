@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -143,4 +144,32 @@ func RelativeDefaults(t time.Time) time.Time {
 	}
 
 	return time.Date(year, month, day, hour, minute, second, t.Nanosecond(), t.Location())
+}
+
+var ErrDateRangeTooLarge = errors.New("date range must be less than one year")
+
+func ForEachPeriod(r DateRange, do func(time.Time) error, year int, month int, day int) error {
+	if r.End.Sub(r.Begin) > time.Hour*24*365 {
+		return ErrDateRangeTooLarge
+	}
+
+	next := r.Begin
+	for next.Before(r.End) {
+		err := do(next)
+		if err != nil {
+			return fmt.Errorf("apply function for date: %w", err)
+		}
+
+		next = next.AddDate(year, month, day)
+	}
+
+	return nil
+}
+
+func ForEachDay(r DateRange, do func(time.Time) error) error {
+	return ForEachPeriod(r, do, 0, 0, 1)
+}
+
+func ForEachWeek(r DateRange, do func(time.Time) error) error {
+	return ForEachPeriod(r, do, 0, 0, 7)
 }

@@ -119,7 +119,7 @@ func GetEventByMessage(r *redis.Client, channelID string, messageID string) (Eve
 func GetEventsForWeek(redis *redis.Client, date time.Time) ([]Event, error) {
 	result := redis.SMembers(EventIndexKeyForDate(date))
 	if result.Err() != nil {
-		return nil, fmt.Errorf("get events for week: %w", result.Err())
+		return nil, fmt.Errorf("get events from index: %w", result.Err())
 	}
 
 	evts := []Event{}
@@ -133,6 +133,26 @@ func GetEventsForWeek(redis *redis.Client, date time.Time) ([]Event, error) {
 	}
 
 	return evts, nil
+}
+
+func GetEventsForDateRange(redis *redis.Client, r util.DateRange) ([]Event, error) {
+	ret := []Event{}
+	err := util.ForEachWeek(r, func(d time.Time) error {
+		evts, err := GetEventsForWeek(redis, d)
+		if err != nil {
+			return fmt.Errorf("get events for week: %w", err)
+		}
+
+		for _, evt := range evts {
+			if evt.Time.After(r.Begin) && evt.Time.Before(r.End) {
+				ret = append(ret, evt)
+			}
+		}
+
+		return nil
+	})
+
+	return ret, err
 }
 
 func AnnounceEvent(session *discordgo.Session, redis *redis.Client, evt Event) error {

@@ -5,6 +5,8 @@ import (
 	"github.com/go-redis/redis"
 )
 
+const StandardDateFormat = "Monday Jan _2 2006"
+
 type Command interface {
 	Execute(Context) error
 }

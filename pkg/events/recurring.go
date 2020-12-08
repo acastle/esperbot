@@ -127,8 +127,6 @@ func WeeklyEventsForRecurringEvent(template RecurringEvent, date time.Time) ([]E
 	return evts, nil
 }
 
-var ErrDateRangeTooLarge = errors.New("date range must be less than one year")
-
 func ScheduleEventsForWeek(redis *redis.Client, date time.Time) error {
 	log.WithFields(log.Fields{
 		"begin": util.BeginningOfWeek(date.UTC()),
@@ -160,6 +158,25 @@ func ScheduleEventsForWeek(redis *redis.Client, date time.Time) error {
 			err = ScheduleEvent(redis, evt)
 			if err != nil {
 				return fmt.Errorf("schedule event: %w", err)
+			}
+
+			attendance, err := GetAttendanceForDay(redis, evt.Time)
+			if err != nil {
+				return fmt.Errorf("fetch attendance for the day: %w", err)
+			}
+
+			for _, userID := range attendance.Late {
+				err := EventUserListAdd(redis, evt, userID, Late)
+				if err != nil {
+					return fmt.Errorf("add user to event list: %w", err)
+				}
+			}
+
+			for _, userID := range attendance.Absent {
+				err := EventUserListAdd(redis, evt, userID, Absent)
+				if err != nil {
+					return fmt.Errorf("add user to event list: %w", err)
+				}
 			}
 		}
 

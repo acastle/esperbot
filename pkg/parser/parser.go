@@ -23,12 +23,40 @@ func Parse(command string) (commands.Command, error) {
 	switch fields[0] {
 	case "!help":
 		return &commands.HelpCommand{}, nil
+	case "!setname":
+		return &commands.SetNameCommand{
+			Name: strings.Join(fields[1:], "-"),
+		}, nil
 	case "!out":
 		dates, err := util.FlagsToDateRange(fields[1:])
 		if err != nil {
 			return nil, fmt.Errorf("parse flags: %w", err)
 		}
 		return &commands.OutCommand{
+			Dates: dates,
+		}, nil
+	case "!late":
+		dates, err := util.FlagsToDateRange(fields[1:])
+		if err != nil {
+			return nil, fmt.Errorf("parse flags: %w", err)
+		}
+		return &commands.LateCommand{
+			Dates: dates,
+		}, nil
+	case "!ontime":
+		dates, err := util.FlagsToDateRange(fields[1:])
+		if err != nil {
+			return nil, fmt.Errorf("parse flags: %w", err)
+		}
+		return &commands.OnTimeCommand{
+			Dates: dates,
+		}, nil
+	case "!in":
+		dates, err := util.FlagsToDateRange(fields[1:])
+		if err != nil {
+			return nil, fmt.Errorf("parse flags: %w", err)
+		}
+		return &commands.InCommand{
 			Dates: dates,
 		}, nil
 	case "!schedule":

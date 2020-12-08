@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/acastle/esperbot/pkg/events"
-	"github.com/dustin/go-humanize"
+	"github.com/acastle/esperbot/pkg/util"
+	"github.com/bwmarrin/discordgo"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -13,16 +14,34 @@ type EventsCommand struct {
 }
 
 func (c EventsCommand) Execute(ctx Context) error {
-	evts, err := events.GetEventsForWeek(ctx.Redis, time.Now().UTC())
+	now := time.Now().UTC()
+	begin := util.BeginningOfWeek(now)
+	end := util.EndOfWeek(now)
+
+	evts, err := events.GetEventsForWeek(ctx.Redis, now)
 	if err != nil {
 		log.Error(err)
 	}
 
-	content := "__**Upcoming events:**__\n"
-	for _, evt := range evts {
-		content = content + fmt.Sprintf("%s(%s) %s", evt.Name, evt.ID, humanize.Time(evt.Time.Add(time.Hour*5)))
+	embed := discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			Name: "Upcoming events",
+		},
+		Title:       "",
+		Description: fmt.Sprintf("for the week of %s to %s", begin.Format("Monday Jan _2 2006"), end.Format("Monday Jan _2 2006")),
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL: "https://wow.zamimg.com/images/Icon/large/hilite/default.png",
+		},
+		Fields: []*discordgo.MessageEmbedField{},
 	}
 
-	ctx.Session.ChannelMessageSend(ctx.ChannelID, content)
+	for _, evt := range evts {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  evt.Name,
+			Value: evt.Time.Format("Monday Jan _2 2006"),
+		})
+	}
+
+	ctx.Session.ChannelMessageSendEmbed(ctx.ChannelID, &embed)
 	return nil
 }

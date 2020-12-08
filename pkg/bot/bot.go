@@ -21,6 +21,8 @@ type Bot struct {
 	session   *discordgo.Session
 	redis     *redis.Client
 	scheduler *gocron.Scheduler
+
+	channelID string
 }
 
 func NewBot(session *discordgo.Session, redis *redis.Client, scheduler *gocron.Scheduler) (*Bot, error) {
@@ -31,7 +33,11 @@ func NewBot(session *discordgo.Session, redis *redis.Client, scheduler *gocron.S
 	}, nil
 }
 
+const GuildID string = "256295245816397824"
+const ChannelID string = "256297257052274688"
+
 func (b *Bot) Run() error {
+	log.Info("starting esperbot")
 	defer b.session.Close()
 	b.session.AddHandler(b.handleMessage)
 	b.session.AddHandler(b.handleReactionAdd)
@@ -68,7 +74,6 @@ func (b *Bot) Run() error {
 }
 
 func (b *Bot) scheduleEvents() {
-	log.Info("scheduling events")
 	err := events.ScheduleEventsForWeek(b.redis, time.Now())
 	if err != nil {
 		log.Error(err)
@@ -80,7 +85,7 @@ func (b *Bot) scheduleEvents() {
 	}
 
 	for _, evt := range evts {
-		evt.AnnounceChannelID = "256297257052274688"
+		evt.AnnounceChannelID = ChannelID
 		err := events.AnnounceEvent(b.session, b.redis, evt)
 		if err != nil {
 			log.Error(err)
@@ -135,6 +140,10 @@ func (b *Bot) handleReactionAdd(s *discordgo.Session, m *discordgo.MessageReacti
 		return
 	}
 
+	log.WithFields(log.Fields{
+		"user": m.UserID,
+		"list": t,
+	}).Info("add user to event list")
 	err = events.EventUserListAdd(b.redis, evt, m.UserID, t)
 	if err != nil {
 		log.Error(err)
@@ -171,6 +180,10 @@ func (b *Bot) handleReactionRemove(s *discordgo.Session, m *discordgo.MessageRea
 		return
 	}
 
+	log.WithFields(log.Fields{
+		"user": m.UserID,
+		"list": t,
+	}).Info("remove user to event list")
 	err = events.EventUserListRemove(b.redis, evt, m.UserID, t)
 	if err != nil {
 		log.Error(err)
