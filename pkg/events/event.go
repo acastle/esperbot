@@ -26,19 +26,19 @@ func EventIndexKeyForMessageId(channelID string, messageID string) string {
 	return fmt.Sprintf("index:event_by_message:%s:%s", channelID, messageID)
 }
 
-type EventStatus string
+type RaidStatus string
 
 const (
-	Unscheduled EventStatus = "Unscheduled"
-	Scheduled               = "Scheduled"
-	Canceled                = "Canceled"
+	Unscheduled RaidStatus = "Unscheduled"
+	Scheduled              = "Scheduled"
+	Canceled               = "Canceled"
 )
 
 type Event struct {
 	ID     string
 	Name   string
 	Time   time.Time
-	Status EventStatus
+	Status RaidStatus
 
 	RecurringEventID  string
 	AnnounceMessageID string
@@ -90,7 +90,7 @@ func GetEventById(redis *redis.Client, id string) (Event, error) {
 		ID:                data["id"],
 		Name:              data["name"],
 		Time:              time.Unix(timestamp, 0).UTC(),
-		Status:            EventStatus(data["status"]),
+		Status:            RaidStatus(data["status"]),
 		RecurringEventID:  data["recurring_event_id"],
 		AnnounceMessageID: data["announce_message_id"],
 		AnnounceChannelID: data["announce_channel_id"],
