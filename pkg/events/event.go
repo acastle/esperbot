@@ -238,10 +238,10 @@ func GetEmbedForEvent(session *discordgo.Session, redis *redis.Client, evt Event
 		Author: &discordgo.MessageEmbedAuthor{
 			Name: evt.Name,
 		},
-		Title:       "Castle Nathria",
+		Title:       "Sanctum of Domination",
 		Description: evt.Time.Format("Monday Jan _2 2006"),
 		Thumbnail: &discordgo.MessageEmbedThumbnail{
-			URL: "https://wow.zamimg.com/images/wow/icons/large/achievement_raid_revendrethraid_castlenathria.jpg",
+			URL: "https://wow.zamimg.com/images/wow/icons/large/achievement_raid_torghastraid.jpg",
 		},
 		Fields: []*discordgo.MessageEmbedField{
 			{
