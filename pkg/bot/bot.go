@@ -73,18 +73,31 @@ func (b *Bot) Run() error {
 	return nil
 }
 
+const FutureWeeksToSchedule int = 3
+
 func (b *Bot) scheduleEvents() {
-	err := events.ScheduleEventsForWeek(b.redis, time.Now())
-	if err != nil {
-		log.Error(err)
+	if time.Now().Weekday() <= time.Thursday {
+		return
 	}
 
-	evts, err := events.GetEventsForWeek(b.redis, time.Now().UTC())
-	if err != nil {
-		log.Error(err)
+	allEvents := []events.Event{}
+	for i := 0; i < FutureWeeksToSchedule; i++ {
+		err := events.ScheduleEventsForWeek(b.redis, time.Now().AddDate(0, 0, 7*i))
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
+		weekEvents, err := events.GetEventsForWeek(b.redis, time.Now().UTC())
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
+		allEvents = append(allEvents, weekEvents...)
 	}
 
-	for _, evt := range evts {
+	for _, evt := range allEvents {
 		evt.AnnounceChannelID = ChannelID
 		err := events.AnnounceEvent(b.session, b.redis, evt)
 		if err != nil {
