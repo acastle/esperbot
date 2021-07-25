@@ -88,7 +88,7 @@ func (b *Bot) scheduleEvents() {
 			continue
 		}
 
-		weekEvents, err := events.GetEventsForWeek(b.redis, time.Now().UTC())
+		weekEvents, err := events.GetEventsForWeek(b.redis, time.Now().AddDate(0, 0, 7*i))
 		if err != nil {
 			log.Error(err)
 			continue
