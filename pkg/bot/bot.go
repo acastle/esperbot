@@ -76,10 +76,6 @@ func (b *Bot) Run() error {
 const FutureWeeksToSchedule int = 3
 
 func (b *Bot) scheduleEvents() {
-	if time.Now().Weekday() <= time.Thursday {
-		return
-	}
-
 	allEvents := []events.Event{}
 	for i := 0; i < FutureWeeksToSchedule; i++ {
 		err := events.ScheduleEventsForWeek(b.redis, time.Now().AddDate(0, 0, 7*i))
